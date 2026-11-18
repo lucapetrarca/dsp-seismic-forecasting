@@ -56,6 +56,11 @@ Cada **traza** = registro de **una estación** durante **un evento** (sismo o ru
 ## Bitácora
 * **15/11/2026** — Se descargaron los chunks 1 (ruido) y 6 (sismos) además del 2. Se eligió 1 + 2 + 6 por lo
   explicado en *Datos*. Se agregó la metadata al repo y el script de descarga.
+* **17/11/2026** — Sanity check de los chunks 1, 2 y 6: filas iguales al manifest, P y S presentes y en orden.
+  Split train/val/test (`src/data_loader.py`, scikit-learn): 70/10/20, semilla 0. Sismos separados por
+  `source_id` con `GroupShuffleSplit` (219 167 eventos, ninguno en más de una parte); ruido con
+  `train_test_split`, porque no tiene evento. val es para elegir umbrales y parámetros; test se usa una sola
+  vez, al final. Se guarda en `data/processed/split.csv` (no versionado: se rearma igual con la misma semilla).
 
 ## Autor
 * Luca Emilio Petrarca - Proyecto Final para Procesamiento Avanzado de Señales - Facultad de Ciencias Exactas y Naturales UBA
