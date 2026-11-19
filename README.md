@@ -61,6 +61,16 @@ Cada **traza** = registro de **una estación** durante **un evento** (sismo o ru
   `source_id` con `GroupShuffleSplit` (219 167 eventos, ninguno en más de una parte); ruido con
   `train_test_split`, porque no tiene evento. val es para elegir umbrales y parámetros; test se usa una sola
   vez, al final. Se guarda en `data/processed/split.csv` (no versionado: se rearma igual con la misma semilla).
+* **19/11/2026** — Análisis exploratorio en `notebooks/eda_seismic_noise.ipynb`, sólo con trazas de train y el
+  canal Z. Sobre 300 trazas de cada tipo, ADF y KPSS indicaron que tanto el ruido como los sismos son
+  estacionarios, ya que esos tests evalúan la media y en STEAD la media es siempre cero. Lo que cambia en un sismo
+  es la varianza, por lo que se agregó el cociente entre el mayor y el menor desvío en ventanas de 5 s: supera 3 en
+  el 9 % del ruido y en el 94 % de los sismos. Se encontró que una parte chica del ruido tiene el canal Z muerto
+  (desvío casi nulo, cerca del 0.3 %), y esas trazas se descartan. La PSD del ruido muestra que STEAD ya viene
+  filtrado entre 1 y 45 Hz. Comparando la PSD mediana de 491 sismos antes y después de la P, el sismo supera al
+  ruido por 10 dB entre 1 y 45 Hz (la banda que ya trae STEAD) y por 20 dB entre 3 y 22 Hz. Se eligió un
+  Butterworth pasabanda de 3 a 20 Hz, orden 4 y causal (`src/dsp_filters.py`), que lleva la SNR mediana de 19 a
+  24 dB. Una banda de 5 a 15 Hz da algo más (25.6 dB), pero recorta más la señal de los sismos grandes.
 
 ## Autor
 * Luca Emilio Petrarca - Proyecto Final para Procesamiento Avanzado de Señales - Facultad de Ciencias Exactas y Naturales UBA
