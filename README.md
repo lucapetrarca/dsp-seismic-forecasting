@@ -71,6 +71,8 @@ Cada **traza** = registro de **una estación** durante **un evento** (sismo o ru
   ruido por 10 dB entre 1 y 45 Hz (la banda que ya trae STEAD) y por 20 dB entre 3 y 22 Hz. Se eligió un
   Butterworth pasabanda de 3 a 20 Hz, orden 4 y causal (`src/dsp_filters.py`), que lleva la SNR mediana de 19 a
   24 dB. Una banda de 5 a 15 Hz da algo más (25.6 dB), pero recorta más la señal de los sismos grandes.
+  La banda se verificó también en los canales E y N (2.7 a 22.7 Hz con 20 dB), por lo que sirve para los tres.
+  El diseño y la prueba del filtro se pasaron a `notebooks/filters_design_freq.ipynb`.
 
 ## Autor
 * Luca Emilio Petrarca - Proyecto Final para Procesamiento Avanzado de Señales - Facultad de Ciencias Exactas y Naturales UBA
