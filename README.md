@@ -5,12 +5,12 @@ Este proyecto desarrolla un pipeline de Procesamiento Digital de Señales (DSP) 
 
 ## Objetivos Técnicos
 * **Filtrado de Ruido:** Limpieza de la señal sísmica continua utilizando filtros pasabanda en el dominio de la frecuencia para mitigar el ruido oceánico y de tráfico.
-* **Detección Automática:** Identificación del tiempo exacto de llegada de la Onda P mediante técnicas de correlación cruzada y *template matching*.
+* **Detección Automática:** Identificación del tiempo exacto de llegada de la Onda P mediante el detector STA/LTA.
 * **Forecasting Sísmico:** Comparación del rendimiento predictivo entre métodos de pronóstico tradicionales y redes neuronales (LSTM/CNN) evaluando una ventana de 3 segundos post-detección.
 
 ## Tecnologías Utilizadas
 * **Lenguaje:** Python
-* **Procesamiento de Señales:** SciPy, NumPy (Transformada de Fourier, Diseño de Filtros, Correlación)
+* **Procesamiento de Señales:** SciPy, NumPy (Transformada de Fourier, Diseño de Filtros)
 * **Deep Learning / Forecasting:** PyTorch / TensorFlow Keras
 * **Visualización:** Matplotlib, Seaborn (Espectrogramas, Análisis Tiempo-Frecuencia)
 
@@ -73,6 +73,16 @@ Cada **traza** = registro de **una estación** durante **un evento** (sismo o ru
   24 dB. Una banda de 5 a 15 Hz da algo más (25.6 dB), pero recorta más la señal de los sismos grandes.
   La banda se verificó también en los canales E y N (2.7 a 22.7 Hz con 20 dB), por lo que sirve para los tres.
   El diseño y la prueba del filtro se pasaron a `notebooks/filters_design_freq.ipynb`.
+* **20/11/2026** — Detección de la onda P (`src/detection.py`, `notebooks/deteccion_p.ipynb`), con el
+  umbral elegido sobre validación y sin usar test. Se implementó un STA/LTA causal sobre el canal Z filtrado,
+  con STA de 0.5 s. Se probaron LTA de 3, 5 y 10 s; con 10 s el resultado empeora porque la P llega en promedio a
+  los 7 s de la traza y la LTA no alcanza a llenarse de ruido, por lo que se eligió 5 s. Un pick se consideró
+  correcto si cae a menos de 0.5 s de la P marcada, y una falsa alarma es cualquier disparo en una traza de ruido.
+  Con el umbral 5.5, el más bajo que da a lo sumo 5 % de falsas alarmas, se detectó el 83 % de 2000 sismos,
+  bajando al 54 % con SNR menor a 10 dB. El pick llega en general entre 0 y 0.2 s después de la P. También se
+  probó template matching, con las 5 P de mejor SNR de train de cada estación como plantillas, pero detectó sólo
+  el 1.5 % con el mismo criterio de falsas alarmas, ya que las P de distintos sismos tienen formas distintas. Por
+  eso se descartó y el detector del proyecto es el STA/LTA.
 
 ## Autor
 * Luca Emilio Petrarca - Proyecto Final para Procesamiento Avanzado de Señales - Facultad de Ciencias Exactas y Naturales UBA
