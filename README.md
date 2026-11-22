@@ -6,18 +6,19 @@ Este proyecto desarrolla un pipeline de Procesamiento Digital de Señales (DSP) 
 ## Objetivos Técnicos
 * **Filtrado de Ruido:** Limpieza de la señal sísmica continua utilizando filtros pasabanda en el dominio de la frecuencia para mitigar el ruido oceánico y de tráfico.
 * **Detección Automática:** Identificación del tiempo exacto de llegada de la Onda P mediante el detector STA/LTA.
-* **Forecasting Sísmico:** Comparación del rendimiento predictivo entre métodos de pronóstico tradicionales y redes neuronales (LSTM/CNN) evaluando una ventana de 3 segundos post-detección.
+* **Forecasting Sísmico:** Comparación del rendimiento predictivo entre una regresión lineal con features clásicas y una red neuronal convolucional (CNN 1D) evaluando una ventana de 3 segundos post-detección.
 
 ## Tecnologías Utilizadas
 * **Lenguaje:** Python
 * **Procesamiento de Señales:** SciPy, NumPy (Transformada de Fourier, Diseño de Filtros)
-* **Deep Learning / Forecasting:** PyTorch / TensorFlow Keras
-* **Visualización:** Matplotlib, Seaborn (Espectrogramas, Análisis Tiempo-Frecuencia)
+* **Deep Learning / Forecasting:** PyTorch, scikit-learn
+* **Visualización:** Matplotlib
 
 ## Estructura del Repositorio
 * `/src`: Scripts modulares con las funciones de filtrado, detección y predicción.
 * `/notebooks`: Cuadernos de Jupyter con el análisis exploratorio y la justificación matemática.
-* `/docs`: Documento final formato paper académico.
+* `/docs/figures`: Figuras de cada etapa y de la evaluación final.
+* `/models/cnn.pt`: Pesos de la CNN entrenada.
 * `/data`: Carpeta ignorada en Git. Contiene los chunks del dataset `.hdf5`.
 * `/metadata`: Metadata completa (CSV comprimido) de los chunks usados + `MANIFEST.md` con tamaños y conteos.
 * `/scripts/download_stead.py`: Descarga y extrae los chunks a `data/raw/`.
@@ -37,7 +38,8 @@ Cada **traza** = registro de **una estación** durante **un evento** (sismo o ru
 * **Detección de la onda P → chunks 1 + 2.** El 93 % de las trazas del chunk 2 son de estaciones que también
   tienen ruido en el chunk 1 (en el chunk 6, sólo el 34 %). Si sismo y ruido vienen de estaciones distintas, el
   detector puede aprender a reconocer la estación en vez del sismo. Del chunk 6 sólo se usan, para detección,
-  las estaciones con ruido en el chunk 1.
+  las estaciones con ruido en el chunk 1. Como finalmente el detector es un STA/LTA, que no se entrena (sólo se
+  elige el umbral), se evaluó con sismos de los chunks 2 y 6.
 * **Predicción de la amplitud de la S → chunks 2 + 6.** El chunk 2 sólo tiene 243 trazas de M ≥ 5 y está dominado
   por una red; sumando el 6 hay 10 600 trazas de M ≥ 4, 880 de M ≥ 5 y 109 redes.
 * **Chunks 3, 4 y 5: no se usan.** Aportan menos diversidad y menos eventos grandes que el 6 (comparado con sus CSV).
@@ -52,6 +54,22 @@ Cada **traza** = registro de **una estación** durante **un evento** (sismo o ru
   Se bajan con `python scripts/download_stead.py`. No se recorta nada: el script baja los chunks originales.
 * Los zip de STEAD tienen el índice ZIP64 roto (`unzip` y `zipfile` fallan); el script extrae leyendo los
   encabezados locales y verifica el CRC de cada archivo.
+
+## Orden de los notebooks
+1. `sanity_check.ipynb` y `carga_y_split.ipynb`: revisión de los datos y split train/val/test.
+2. `eda_seismic_noise.ipynb`: estacionariedad y elección de la banda del filtro.
+3. `filters_design_freq.ipynb`: respuesta del filtro y SNR con distintas bandas.
+4. `deteccion_p.ipynb`: STA/LTA y elección del umbral en validación.
+5. `prediccion_s.ipynb`: dataset, regresión lineal y CNN en validación.
+6. `evaluacion_final.ipynb`: todo en test, pipeline completo y espectrograma.
+
+## Resultados (test)
+* **Detección de la P (STA/LTA, LTA 5 s, umbral 5.5):** 82.6 % de los sismos detectados a menos de 0.5 s de la P,
+  con 5.2 % de falsas alarmas en ruido. Por SNR: 57 % con menos de 10 dB y 98 % con más de 30 dB.
+* **Amplitud de la S (MAE en log10):** promedio 0.747, regresión lineal 0.227 (factor 1.69), CNN 0.206 (factor 1.61).
+  Con magnitud mayor a 4: lineal 0.341, CNN 0.295.
+* **Pipeline completo:** con la ventana desde el pick del STA/LTA la CNN da 0.215 contra 0.209 con la P de STEAD;
+  el 8.4 % de los sismos queda sin pick.
 
 ## Bitácora
 * **15/11/2026** — Se descargaron los chunks 1 (ruido) y 6 (sismos) además del 2. Se eligió 1 + 2 + 6 por lo
@@ -83,6 +101,16 @@ Cada **traza** = registro de **una estación** durante **un evento** (sismo o ru
   probó template matching, con las 5 P de mejor SNR de train de cada estación como plantillas, pero detectó sólo
   el 1.5 % con el mismo criterio de falsas alarmas, ya que las P de distintos sismos tienen formas distintas. Por
   eso se descartó y el detector del proyecto es el STA/LTA.
+* **21/11/2026** — Predicción de la amplitud de la S (`src/forecasting.py`, `notebooks/prediccion_s.ipynb`). X son
+  los 3 s desde la P de STEAD en la traza filtrada (3 canales) e y es el log10 del pico de E y N en los 5 s desde la
+  S, sin filtrar para no recortar la amplitud real. Se descartaron los sismos con la S a menos de 3 s de la P
+  (quedaría dentro de la ventana) y los que tienen algún canal muerto, y se usó una muestra de 60 000 sismos de
+  train y 10 000 de validación para entrenar en CPU. El baseline es una regresión lineal con pico, RMS, Pd, τc y
+  frecuencia dominante; la CNN tiene tres capas convolucionales sobre la ventana normalizada y recibe aparte el
+  log10 del máximo, para no perder la amplitud. Se entrenó 20 épocas con MAE como pérdida, guardando la de menor
+  error en validación. En validación: lineal 0.229 y CNN 0.207.
+  Evaluación final (`notebooks/evaluacion_final.ipynb`), única vez que se usó test: los resultados están en
+  *Resultados*. Las figuras quedaron en `docs/figures/`.
 
 ## Autor
 * Luca Emilio Petrarca - Proyecto Final para Procesamiento Avanzado de Señales - Facultad de Ciencias Exactas y Naturales UBA
