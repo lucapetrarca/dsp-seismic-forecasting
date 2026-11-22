@@ -63,6 +63,8 @@ Cada **traza** = registro de **una estación** durante **un evento** (sismo o ru
 5. `prediccion_s.ipynb`: dataset, regresión lineal y CNN en validación.
 6. `evaluacion_final.ipynb`: todo en test, pipeline completo y espectrograma.
 
+Para correr todos en orden: `python main.py` (con el entorno virtual activado y los chunks en `data/raw/`).
+
 ## Resultados (test)
 * **Detección de la P (STA/LTA, LTA 5 s, umbral 5.5):** 82.6 % de los sismos detectados a menos de 0.5 s de la P,
   con 5.2 % de falsas alarmas en ruido. Por SNR: 57 % con menos de 10 dB y 98 % con más de 30 dB.
